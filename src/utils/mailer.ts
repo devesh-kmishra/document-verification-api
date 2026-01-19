@@ -12,6 +12,9 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function sendVerificationEmail(to: string, token: string) {
+  // todo: change later
+  if (process.env.NODE_ENV === "production") return;
+
   const link = `http://localhost:${PORT}/verify/employment/${token}`;
 
   await transporter.sendMail({

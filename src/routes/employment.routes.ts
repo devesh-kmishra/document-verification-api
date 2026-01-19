@@ -11,7 +11,9 @@ const router = Router();
 
 router.get("/form/:token", getVerificationForm);
 router.post("/", createVerification);
-router.post("/submit/:token", verificationUpload, submitVerification);
+// todo: uncomment and use later
+// router.post("/submit/:token", verificationUpload, submitVerification);
+router.post("/submit/:token", submitVerification);
 router.post("/:id/calling-log", addCallingLog);
 
 export default router;

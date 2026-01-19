@@ -76,7 +76,10 @@ export const getVerificationForm = async (req: Request, res: Response) => {
 
 export const submitVerification = async (req: Request, res: Response) => {
   const token = req.params.token as string;
-  const answers = JSON.parse(req.body.answers);
+  const answers =
+    typeof req.body.answers === "string"
+      ? JSON.parse(req.body.answers)
+      : req.body.answers;
 
   const verification = await prisma.employmentVerification.findUnique({
     where: { verificationToken: token },

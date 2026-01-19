@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { create } from "node:domain";
+import { VerificationStatus } from "../../generated/prisma/enums";
 
-interface Timeline {
+type Timeline = {
   timestamp: Date;
   type: string;
   employmentId: string;
@@ -10,7 +11,13 @@ interface Timeline {
   documentType?: string;
   fileUrl?: string;
   message: string;
-}
+};
+
+type EmploymentBreakdownItem = {
+  company: string;
+  status: VerificationStatus;
+  risk: number;
+};
 
 export const getCandidateOverview = async (req: Request, res: Response) => {
   const candidateId = req.params.candidateId as string;
@@ -37,7 +44,7 @@ export const getCandidateOverview = async (req: Request, res: Response) => {
   });
 
   const verificationStatus = getOverallStatusFromEmployments(
-    allStatuses.map((e) => e.status),
+    allStatuses.map((e: { status: VerificationStatus }) => e.status),
   );
 
   res.json({
@@ -143,7 +150,7 @@ export const getCandidateSummary = async (req: Request, res: Response) => {
     });
   }
 
-  const breakdown = employments.map((emp) => {
+  const breakdown: EmploymentBreakdownItem[] = employments.map((emp) => {
     const risk = getRiskForStatus(emp.status);
 
     return {
@@ -153,17 +160,21 @@ export const getCandidateSummary = async (req: Request, res: Response) => {
     };
   });
 
-  const highestRisk = Math.max(...breakdown.map((b) => b.risk));
+  const highestRisk = Math.max(
+    ...breakdown.map((b: EmploymentBreakdownItem) => b.risk),
+  );
   const multipleEmploymentPenalty = employments.length > 1 ? 5 : 0;
   const riskScore = Math.min(highestRisk + multipleEmploymentPenalty, 100);
 
   const remarks: string[] = [];
 
-  if (breakdown.some((b) => b.status === "DISCREPANCY")) {
+  if (
+    breakdown.some((b: EmploymentBreakdownItem) => b.status === "DISCREPANCY")
+  ) {
     remarks.push("One or more employment verifications have discrepancies");
   }
 
-  if (breakdown.some((b) => b.status === "FAILED")) {
+  if (breakdown.some((b: EmploymentBreakdownItem) => b.status === "FAILED")) {
     remarks.push("One or more employment verifications failed");
   }
 

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { create } from "node:domain";
 import { VerificationStatus } from "../../generated/prisma/enums";
+import { EmploymentVerification } from "../../generated/prisma/client";
 
 type Timeline = {
   timestamp: Date;
@@ -150,15 +151,17 @@ export const getCandidateSummary = async (req: Request, res: Response) => {
     });
   }
 
-  const breakdown: EmploymentBreakdownItem[] = employments.map((emp) => {
-    const risk = getRiskForStatus(emp.status);
+  const breakdown: EmploymentBreakdownItem[] = employments.map(
+    (emp: EmploymentVerification) => {
+      const risk = getRiskForStatus(emp.status);
 
-    return {
-      company: emp.previousCompanyName,
-      status: emp.status,
-      risk,
-    };
-  });
+      return {
+        company: emp.previousCompanyName,
+        status: emp.status,
+        risk,
+      };
+    },
+  );
 
   const highestRisk = Math.max(
     ...breakdown.map((b: EmploymentBreakdownItem) => b.risk),

@@ -5,10 +5,14 @@ import {
   getCandidateOverview,
   getCandidateSummary,
   getEmploymentTimeline,
+  getVerificationQueue,
+  searchCandidates,
 } from "../controllers/candidate.controller";
 
 const router = Router();
 
+router.get("/queue", getVerificationQueue);
+router.get("/search", searchCandidates);
 router.get("/:candidateId/employment-timeline", getEmploymentTimeline);
 router.get("/:candidateId/summary", getCandidateSummary);
 router.get("/:candidateId/overview", getCandidateOverview);

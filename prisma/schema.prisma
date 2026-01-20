@@ -8,14 +8,20 @@ datasource db {
 }
 
 model Candidate {
-  id          String                   @id @default(uuid())
-  name        String
-  email       String
-  phone       String?
-  city        String?
-  createdAt   DateTime                 @default(now())
+  id                 String   @id @default(uuid())
+  name               String
+  email              String   @unique
+  phone              String?
+  city               String?
+  joiningDesignation String?
+  createdAt          DateTime @default(now())
+
   employments EmploymentVerification[]
   notes       CandidateNote[]
+
+  @@index([city])
+  @@index([joiningDesignation])
+  @@index([createdAt])
 }
 
 model CandidateNote {
@@ -45,7 +51,11 @@ model EmploymentVerification {
   createdAt            DateTime              @default(now())
   candidate            Candidate             @relation(fields: [candidateId], references: [id])
   response             VerificationResponse?
-  callingLogs          CallingLog[]
+
+  callingLogs CallingLog[]
+
+  @@index([candidateId])
+  @@index([status])
 }
 
 model VerificationResponse {

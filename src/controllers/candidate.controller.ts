@@ -20,8 +20,10 @@ type EmploymentBreakdownItem = {
   risk: number;
 };
 
+type QueueStatus = "all" | "pending" | "completed" | "failed";
+
 export const createCandidate = async (req: Request, res: Response) => {
-  const { name, email, phone, city } = req.body;
+  const { name, email, phone, city, joiningDesignation } = req.body;
 
   if (!name || !email) {
     return res.status(400).json({
@@ -36,6 +38,7 @@ export const createCandidate = async (req: Request, res: Response) => {
         email,
         phone,
         city,
+        joiningDesignation,
       },
     });
 
@@ -88,7 +91,8 @@ export const getCandidateOverview = async (req: Request, res: Response) => {
     email: candidate.email,
     phone: candidate.phone,
     city: candidate.city,
-    position: latestEmployment?.designation ?? "-",
+    position:
+      candidate.joiningDesignation ?? latestEmployment?.designation ?? "-",
     verificationStatus,
   });
 };
@@ -247,7 +251,111 @@ export const addCandidateNote = async (req: Request, res: Response) => {
   res.status(201).json(create);
 };
 
-function getOverallStatusFromEmployments(statuses: string[]) {
+export const searchCandidates = async (req: Request, res: Response) => {
+  const query = req.query.q as string | undefined;
+
+  if (!query || query.trim().length < 2) {
+    return res.status(400).json({
+      message: "Search query must be at least 2 characters",
+    });
+  }
+
+  const candidates = await prisma.candidate.findMany({
+    where: {
+      OR: [
+        { name: { contains: query, mode: "insensitive" } },
+        { email: { contains: query, mode: "insensitive" } },
+        { phone: { contains: query } },
+      ],
+    },
+    take: 10,
+    include: {
+      employments: {
+        select: { status: true },
+      },
+    },
+  });
+
+  const results = candidates.map((candidate) => {
+    const statuses = candidate.employments.map((e) => e.status);
+
+    return {
+      id: candidate.id,
+      name: candidate.name,
+      email: candidate.email,
+      phone: candidate.phone,
+      city: candidate.city,
+      joiningDesignation: candidate.joiningDesignation,
+      verificationStatus: getOverallStatusFromEmployments(statuses),
+    };
+  });
+
+  res.json({
+    count: results.length,
+    results,
+  });
+};
+
+export const getVerificationQueue = async (req: Request, res: Response) => {
+  const status = (req.query.status as QueueStatus) || "all";
+  const city = req.query.city as string | undefined;
+  const designation = req.query.designation as string | undefined;
+  const q = req.query.q as string | undefined;
+
+  const candidates = await prisma.candidate.findMany({
+    where: {
+      ...(city && {
+        city: { equals: city, mode: "insensitive" },
+      }),
+      ...(designation && {
+        joiningDesignation: {
+          contains: designation,
+          mode: "insensitive",
+        },
+      }),
+      ...(q && {
+        OR: [
+          { name: { contains: q, mode: "insensitive" } },
+          { email: { contains: q, mode: "insensitive" } },
+          { phone: { contains: q } },
+        ],
+      }),
+    },
+    include: {
+      employments: {
+        select: { status: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const results = candidates
+    .map((candidate) => {
+      const statuses = candidate.employments.map((e) => e.status);
+      const queueStatus = deriveQueueStatus(statuses);
+
+      return {
+        id: candidate.id,
+        name: candidate.name,
+        email: candidate.email,
+        city: candidate.city,
+        joiningDesignation: candidate.joiningDesignation,
+        verificationStatus: queueStatus,
+      };
+    })
+    .filter((candidate) => {
+      if (status === "all") return true;
+
+      return candidate.verificationStatus === status;
+    });
+
+  res.json({
+    count: results.length,
+    results,
+  });
+};
+
+function getOverallStatusFromEmployments(statuses: VerificationStatus[]) {
   if (statuses.includes("FAILED")) return "HIGH_RISK";
   if (statuses.includes("DISCREPANCY")) return "REVIEW";
   if (statuses.some((s) => s === "PENDING" || s === "IN_PROGRESS")) {
@@ -276,4 +384,22 @@ function getOverallStatus(riskScore: number) {
   if (riskScore <= 20) return "CLEAR";
   if (riskScore <= 50) return "REVIEW";
   return "HIGH_RISK";
+}
+
+function deriveQueueStatus(statuses: VerificationStatus[]): QueueStatus {
+  if (
+    statuses.includes(VerificationStatus.FAILED) ||
+    statuses.includes(VerificationStatus.DISCREPANCY)
+  ) {
+    return "failed";
+  }
+
+  if (
+    statuses.includes(VerificationStatus.PENDING) ||
+    statuses.includes(VerificationStatus.IN_PROGRESS)
+  ) {
+    return "pending";
+  }
+
+  return "completed";
 }

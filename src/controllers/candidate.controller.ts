@@ -20,6 +20,40 @@ type EmploymentBreakdownItem = {
   risk: number;
 };
 
+export const createCandidate = async (req: Request, res: Response) => {
+  const { name, email, phone, city } = req.body;
+
+  if (!name || !email) {
+    return res.status(400).json({
+      message: "Name and email are required",
+    });
+  }
+
+  try {
+    const candidate = await prisma.candidate.create({
+      data: {
+        name,
+        email,
+        phone,
+        city,
+      },
+    });
+
+    res.status(201).json(candidate);
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message.includes("Unique constraint")) {
+      return res.status(409).json({
+        message: "Candidate with this email already exists",
+      });
+    }
+
+    console.error("Create candidate error:", error);
+    res.status(500).json({
+      message: "Failed to create candidate",
+    });
+  }
+};
+
 export const getCandidateOverview = async (req: Request, res: Response) => {
   const candidateId = req.params.candidateId as string;
 

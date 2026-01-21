@@ -364,9 +364,19 @@ export const uploadCandidateResume = async (req: Request, res: Response) => {
   }
 
   try {
-    const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-      folder: "resumes",
-      resource_type: "raw",
+    const uploadResult = await new Promise<any>((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream(
+          {
+            folder: "resumes",
+            resource_type: "raw",
+          },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+          },
+        )
+        .end(req.file?.buffer);
     });
 
     const candidate = await prisma.candidate.update({

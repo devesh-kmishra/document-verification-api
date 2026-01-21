@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
-import { create } from "node:domain";
 import { VerificationStatus } from "../../generated/prisma/enums";
 import { EmploymentVerification } from "../../generated/prisma/client";
 import cloudinary from "../lib/cloudinary";
@@ -249,7 +248,7 @@ export const addCandidateNote = async (req: Request, res: Response) => {
     },
   });
 
-  res.status(201).json(create);
+  res.status(201).json(createdNote);
 };
 
 export const searchCandidates = async (req: Request, res: Response) => {

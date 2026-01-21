@@ -7,7 +7,9 @@ import {
   getEmploymentTimeline,
   getVerificationQueue,
   searchCandidates,
+  uploadCandidateResume,
 } from "../controllers/candidate.controller";
+import { upload } from "../utils/fileUpload";
 
 const router = Router();
 
@@ -18,5 +20,10 @@ router.get("/:candidateId/summary", getCandidateSummary);
 router.get("/:candidateId/overview", getCandidateOverview);
 router.post("/", createCandidate);
 router.post("/:candidateId/notes", addCandidateNote);
+router.post(
+  "/:candidateId/resume",
+  upload.single("resume"),
+  uploadCandidateResume,
+);
 
 export default router;

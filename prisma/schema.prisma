@@ -8,13 +8,15 @@ datasource db {
 }
 
 model Candidate {
-  id                 String   @id @default(uuid())
+  id                 String    @id @default(uuid())
   name               String
-  email              String   @unique
+  email              String    @unique
   phone              String?
   city               String?
   joiningDesignation String?
-  createdAt          DateTime @default(now())
+  resumeUrl          String?
+  resumeUploadedAt   DateTime?
+  createdAt          DateTime  @default(now())
 
   employments EmploymentVerification[]
   notes       CandidateNote[]

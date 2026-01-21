@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma";
 import { create } from "node:domain";
 import { VerificationStatus } from "../../generated/prisma/enums";
 import { EmploymentVerification } from "../../generated/prisma/client";
+import cloudinary from "../lib/cloudinary";
 
 type Timeline = {
   timestamp: Date;
@@ -353,6 +354,39 @@ export const getVerificationQueue = async (req: Request, res: Response) => {
     count: results.length,
     results,
   });
+};
+
+export const uploadCandidateResume = async (req: Request, res: Response) => {
+  const candidateId = req.params.candidateId as string;
+
+  if (!req.file) {
+    return res.status(400).json({ message: "Resume file is required" });
+  }
+
+  try {
+    const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+      folder: "resumes",
+      resource_type: "raw",
+    });
+
+    const candidate = await prisma.candidate.update({
+      where: { id: candidateId },
+      data: {
+        resumeUrl: uploadResult.secure_url,
+        resumeUploadedAt: new Date(),
+      },
+    });
+
+    res.json({
+      message: "Resume uploaded successfully",
+      resumeUrl: candidate.resumeUrl,
+    });
+  } catch (error) {
+    console.error("Resume upload failed:", error);
+    res.status(500).json({
+      message: "Failed to upload resume",
+    });
+  }
 };
 
 function getOverallStatusFromEmployments(statuses: VerificationStatus[]) {

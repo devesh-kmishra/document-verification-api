@@ -323,7 +323,7 @@ export const getVerificationQueue = async (req: Request, res: Response) => {
     },
     include: {
       employments: {
-        select: { status: true },
+        select: { status: true, createdAt: true, updatedAt: true },
       },
     },
     orderBy: { createdAt: "desc" },
@@ -332,7 +332,19 @@ export const getVerificationQueue = async (req: Request, res: Response) => {
   const results = candidates
     .map((candidate) => {
       const statuses = candidate.employments.map((e) => e.status);
+
       const queueStatus = deriveQueueStatus(statuses);
+      const riskScore = calculateCandidateRisk(statuses);
+      const progress = calculateProgress(statuses);
+
+      const createdDates = candidate.employments.map((e) => e.createdAt);
+      const tatDays = calculateTAT(createdDates);
+
+      const lastUpdated = candidate.employments.reduce(
+        (latest, e) =>
+          e.updatedAt && e.updatedAt > latest ? e.updatedAt : latest,
+        candidate.createdAt,
+      );
 
       return {
         id: candidate.id,
@@ -341,6 +353,10 @@ export const getVerificationQueue = async (req: Request, res: Response) => {
         city: candidate.city,
         joiningDesignation: candidate.joiningDesignation,
         verificationStatus: queueStatus,
+        riskScore,
+        progress,
+        tatDays,
+        lastUpdated,
       };
     })
     .filter((candidate) => {
@@ -445,4 +461,24 @@ function deriveQueueStatus(statuses: VerificationStatus[]): QueueStatus {
   }
 
   return "completed";
+}
+
+function calculateCandidateRisk(statuses: VerificationStatus[]): number {
+  return Math.max(...statuses.map(getRiskForStatus), 0);
+}
+
+function calculateProgress(statuses: VerificationStatus[]): string {
+  const completed = statuses.filter(
+    (s) => s === "CLEAR" || s === "FAILED" || s === "DISCREPANCY",
+  ).length;
+
+  return `${completed}/${statuses.length}`;
+}
+
+function calculateTAT(createdDates: Date[]): number {
+  const start = Math.min(...createdDates.map((d) => d.getTime()));
+  const now = Date.now();
+  const diffMs = now - start;
+
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }

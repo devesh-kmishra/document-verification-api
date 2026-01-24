@@ -36,28 +36,31 @@ model CandidateNote {
 }
 
 model EmploymentVerification {
-  id                   String                @id @default(uuid())
+  id                   String             @id @default(uuid())
   candidateId          String
   previousCompanyName  String
   previousCompanyEmail String
   designation          String
   tenureFrom           DateTime
-  tenureTo             DateTime
+  tenureTo             DateTime?
   reasonForExit        String?
   hrContactName        String?
   hrContactPhone       String?
-  status               VerificationStatus    @default(PENDING)
-  verificationToken    String                @unique
+  status               VerificationStatus @default(PENDING)
+  verificationToken    String             @unique
   tokenExpiresAt       DateTime
   completedAt          DateTime?
-  createdAt            DateTime              @default(now())
-  candidate            Candidate             @relation(fields: [candidateId], references: [id])
-  response             VerificationResponse?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt()
+  candidate            Candidate          @relation(fields: [candidateId], references: [id])
 
+  response    VerificationResponse?
   callingLogs CallingLog[]
 
   @@index([candidateId])
   @@index([status])
+  @@index([tokenExpiresAt])
+  @@index([candidateId, status])
 }
 
 model VerificationResponse {
